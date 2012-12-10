@@ -7,9 +7,12 @@ import (
 	"fmt"
 	nats "github.com/cloudfoundry/gonats"
 	"net"
+	"os"
+	"os/signal"
 	vcap "router/common"
 	"router/proxy"
 	"runtime"
+	"syscall"
 	"time"
 )
 
@@ -157,15 +160,36 @@ func (r *Router) Run() {
 	if err != nil {
 		log.Fatalf("net.Listen: %s", err)
 	}
+	tl := proxy.NewTrackingListener(l)
+
+	finished := make(chan bool)
+	go func() {
+		c := make(chan os.Signal)
+		signal.Notify(c, syscall.SIGUSR1)
+		<-c
+
+		log.Info("Closing listener...")
+		tl.Close()
+		tl.WaitForConnectionsClosed()
+		finished <- true
+	}()
 
 	s := proxy.Server{Handler: r.proxy}
 	if config.ProxyWarmupTime != 0 {
 		log.Info("Warming up proxy server ...")
 		time.Sleep(time.Duration(config.ProxyWarmupTime) * time.Second)
 	}
-	err = s.Serve(l)
-	if err != nil {
-		log.Fatalf("proxy.Serve: %s", err)
+	err = s.Serve(tl)
+
+	var waitAtMost = 120 * time.Second // wait for at most 120 seconds before exiting
+	if config.WaitBeforeExiting != 0 {
+		waitAtMost = time.Duration(config.WaitBeforeExiting) * time.Second
+	}
+	select {
+	case <-time.After(waitAtMost):
+		log.Error(err.Error())
+	case <-finished:
+		log.Info("Shutdown gracefully")
 	}
 }
 

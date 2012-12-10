@@ -19,6 +19,7 @@ type Config struct {
 	FlushAppsInterval int       "flush_apps_interval,omitempty"
 	GoMaxProcs        int       "go_max_procs,omitempty"
 	ProxyWarmupTime   int       "proxy_warmup_time,omitempty"
+	WaitBeforeExiting int       "wait_before_exiting,omitempty"
 
 	ip string
 }

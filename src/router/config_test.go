@@ -75,4 +75,5 @@ func (s *ConfigSuite) TestInitFromFile(c *C) {
 	c.Assert(config.FlushAppsInterval, Equals, 30)
 	c.Assert(config.GoMaxProcs, Equals, 8)
 	c.Assert(config.ProxyWarmupTime, Equals, 5)
+	c.Assert(config.WaitBeforeExiting, Equals, 120)
 }
